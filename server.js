@@ -910,6 +910,7 @@ app.post(
         //     return logAndFail("Verification failed.");
 
         // Convert random_seed to Long, which is signed, after verifying the string
+        const clientversion = req.body.clientversion;
         req.body.random_seed = Long.fromString(req.body.random_seed, 10);
         req.body.task_time = get_timestamp_from_seed(req.body.random_seed);
         let trainingdatafile;
