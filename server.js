@@ -97,7 +97,6 @@ const {
     checksum,
     make_seed,
     get_timestamp_from_seed,
-    seed_from_mongolong,
     process_games_list,
     CalculateEloFromPercent,
     objectIdFromDate,
@@ -384,7 +383,7 @@ app.use(
 // This is async but we don't need it to start the server. I'm calling it during startup so it'll get the value cached right away
 // instead of when the first /best-network request comes in, in case a lot of those requests come in at once when server
 // starts up.
-get_best_network_hash().then(hash => console.log("Current best hash " + hash));
+// get_best_network_hash().then(hash => console.log("Current best hash " + hash));
 
 setInterval(() => {
     log_memory_stats("10 minute interval");
@@ -919,12 +918,15 @@ app.post(
 
         const sgfbuffer = Buffer.from(req.files.sgf.data);
         const trainbuffer = Buffer.from(req.files.trainingdata.data);
+        const networkhash = req.body.winnerhash;
+        const loserhash = req.body.loserhash;
         let winner = await db.collection("networks").findOne({
-            hash: req.body.winnerhash,
+            hash: networkhash,
         });
-        let loser = (await db.collection("network")).findOne({
-            hash: req.body.loserhash
+        let loser = (await db.collection("networks")).findOne({
+            hash: loserhash
         });
+
         if (req.ip == "xxx") {
             res.send("Game data " + sgfhash + " stored in database\n");
             console.log(
@@ -955,6 +957,7 @@ app.post(
                                         ip: req.ip,
                                         networkhash,
                                         sgf: sgffile,
+                                        loserhash,
                                         options_hash: req.body.options_hash,
                                         movescount: req.body.movescount ?
                                             Number(req.body.movescount) : null,
@@ -1092,174 +1095,6 @@ app.post(
                 }
             });
         }
-        // verify match exists in database
-        // let match = await db.collection("matches").findOne({
-        //     $or: [{
-        //             network1: req.body.winnerhash,
-        //             network2: req.body.loserhash
-        //         },
-        //         {
-        //             network2: req.body.winnerhash,
-        //             network1: req.body.loserhash
-        //         }
-        //     ],
-        //     options_hash: req.body.options_hash
-        // });
-
-        // // Match not found, abort!!
-        // if (!match) return logAndFail("Match not found.");
-
-        // // Verify random_seed for the match hasn't been used
-        // if (
-        //     await db.collection("match_games").findOne({
-        //         random_seed: req.body.random_seed,
-        //         $or: [{
-        //                 winnerhash: req.body.winnerhash,
-        //                 loserhash: req.body.loserhash
-        //             },
-        //             {
-        //                 loserhash: req.body.winnerhash,
-        //                 winnerhash: req.body.loserhash
-        //             }
-        //         ],
-        //         options_hash: req.body.options_hash
-        //     })
-        // )
-        //     return logAndFail("Upload match with duplicate random_seed.");
-
-        // // calculate sgfhash
-        // try {
-        //     const sgfbuffer = await new Promise((resolve, reject) =>
-        //         zlib.unzip(req.files.sgf.data, (err, res) => {
-        //             if (err) {
-        //                 reject(err);
-        //             } else {
-        //                 resolve(res);
-        //             }
-        //         })
-        //     );
-        //     const sgfhash = checksum(sgfbuffer, "sha256");
-
-        //     // upload match game to database
-        //     const dbres = await db.collection("match_games").updateOne({
-        //         sgfhash
-        //     }, {
-        //         $set: {
-        //             ip: req.ip,
-        //             winnerhash: req.body.winnerhash,
-        //             loserhash: req.body.loserhash,
-        //             sgf: sgfbuffer.toString(),
-        //             options_hash: req.body.options_hash,
-        //             clientversion: Number(req.body.clientversion),
-        //             winnercolor: req.body.winnercolor,
-        //             movescount: req.body.movescount ?
-        //                 Number(req.body.movescount) : null,
-        //             score: req.body.score,
-        //             random_seed: req.body.random_seed
-        //         }
-        //     }, {
-        //         upsert: true
-        //     });
-
-        //     // Not inserted, we got duplicate sgfhash, abort!
-        //     if (!dbres.upsertedId)
-        //         return logAndFail("Upload match with duplicate sgf.");
-
-        //     console.log(
-        //         `${req.ip} (${req.headers["x-real-ip"]}) uploaded in ${Math.round(
-        //   Date.now() / 1000 - req.body.task_time
-        // )}s match: ${sgfhash}`
-        //     );
-        //     res.send("Match data " + sgfhash + " stored in database\n");
-        // } catch (err) {
-        //     console.error(err);
-        //     return logAndFail("Error with sgf.");
-        // }
-
-        // // prepare $inc
-        // const $inc = {
-        //     game_count: 1
-        // };
-        // const is_network1_win = match.network1 == req.body.winnerhash;
-        // if (is_network1_win) $inc.network1_wins = 1;
-        // else $inc.network1_losses = 1;
-
-        // // save to database using $inc and get modified document
-        // match = (await db.collection("matches").findOneAndUpdate({
-        //         _id: match._id
-        //     }, {
-        //         $inc
-        //     }, {
-        //         returnOriginal: false
-        //     } // return modified document
-        // )).value;
-
-        // // get latest SPRT result
-        // const sprt_result = SPRT(match.network1_wins, match.network1_losses);
-        // const pending_match_index = pending_matches.findIndex(m =>
-        //     m._id.equals(match._id)
-        // );
-
-        // // match is found in pending_matches
-        // if (pending_match_index >= 0) {
-        //     const m = pending_matches[pending_match_index];
-
-        //     if (sprt_result === false) {
-        //         // remove from pending matches
-        //         console.log("SPRT: Early fail pop: " + JSON.stringify(m));
-        //         pending_matches.splice(pending_match_index, 1);
-        //         console.log(
-        //             "SPRT: Early fail post-pop: " + JSON.stringify(pending_matches)
-        //         );
-        //     } else {
-        //         // remove the match from the requests array.
-        //         const index = m.requests.findIndex(
-        //             e => e.seed === seed_from_mongolong(req.body.random_seed)
-        //         );
-        //         if (index !== -1) {
-        //             m.requests.splice(index, 1);
-        //         }
-
-        //         // update stats
-        //         m.game_count++;
-        //         if (m.network1 == req.body.winnerhash) {
-        //             m.network1_wins++;
-        //         } else {
-        //             m.network1_losses++;
-        //         }
-
-        //         if (sprt_result === true) {
-        //             console.log("SPRT: Early pass unshift: " + JSON.stringify(m));
-        //             pending_matches.splice(pending_match_index, 1); // cut out the match
-        //             if (m.game_count < m.number_to_play) pending_matches.unshift(m); // continue a SPRT pass at end of queue
-        //             console.log(
-        //                 "SPRT: Early pass post-unshift: " + JSON.stringify(pending_matches)
-        //             );
-        //         }
-        //     }
-        // }
-
-        // // Lastly, promotion check!!
-        // const best_network_hash = await get_best_network_hash();
-        // if (
-        //     // Best network was being challenged
-        //     match.network2 == best_network_hash &&
-        //     // This is not a test match
-        //     !match.is_test &&
-        //     // SPRT passed OR it has reach 55% after 400 games (stick to the magic number)
-        //     (sprt_result === true ||
-        //         (match.game_count >= 400 &&
-        //             match.network1_wins / match.game_count >= 0.55))
-        // ) {
-        //     const promote_hash = match.network1;
-        //     const promote_file = `${__dirname}/network/${promote_hash}.gz`;
-        //     fs.copyFileSync(promote_file, __dirname + "/network/best-network.gz");
-        //     console.log(`New best network copied from ${promote_file}`);
-        //     discord.network_promotion_notify(promote_hash);
-        // }
-
-        // dbutils.update_matches_stats_cache(db, match._id, is_network1_win);
-        // cachematches.clear(() => console.log("Cleared match cache."));
     })
 );
 
