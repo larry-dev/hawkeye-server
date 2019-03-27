@@ -920,6 +920,7 @@ app.post(
         const trainbuffer = Buffer.from(req.files.trainingdata.data);
         const networkhash = req.body.winnerhash;
         const loserhash = req.body.loserhash;
+        console.log(networkhash, loserhash);
         let winner = await db.collection("networks").findOne({
             hash: networkhash,
         });
