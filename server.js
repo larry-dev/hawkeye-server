@@ -1015,7 +1015,9 @@ app.post(
                                     $inc: {
                                         game_count: 1,
                                     },
-                                    elo: winner.elo + elo
+                                    $set: {
+                                        elo: winner.elo + elo
+                                    }
                                 }, {},
                                 err => {
                                     if (err) {
@@ -1056,7 +1058,9 @@ app.post(
                                     $inc: {
                                         game_count: 1,
                                     },
-                                    elo: loser.elo - elo
+                                    $set: {
+                                        elo: loser.elo - elo
+                                    }
                                 }, {},
                                 err => {
                                     if (err) {
