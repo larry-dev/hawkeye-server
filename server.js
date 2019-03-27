@@ -768,6 +768,7 @@ app.post(
 
                 let elo = nets.length >= 3 ? nets[1].elo : 0;
                 let lossId = nets.length >= 3 ? nets[2]._id : null;
+                const now = Math.round(Date.now() / 1000);
                 const set = {
                     hash: req.files.weights.hash,
                     ip: req.ip,
@@ -777,7 +778,9 @@ app.post(
                     blocks: req.files.weights.blocks,
                     description: req.body.description,
                     elo: elo,
-                    enabled: 1
+                    enabled: 1,
+                    game_count: 0,
+                    exit_time: now
                 };
 
                 // No training count given, we'll calculate it from database.
@@ -808,7 +811,8 @@ app.post(
                             _id: lossId
                         }, {
                             $set: {
-                                enabled: 0
+                                enabled: 0,
+                                exit_time: now,
                             }
                         }, {
                             upsert: true
@@ -1538,7 +1542,7 @@ app.get(
         let network_table =
             '<table class="networks-table" border=1><tr><th colspan=7>Best Network Hash</th></tr>\n';
         network_table +=
-            "<tr><th>#</th><th>Upload Date</th><th>Hash</th><th>Size</th><th>Elo</th><th>Games</th><th>Training #</th></tr>\n";
+            "<tr><th>Upload Date</th><th>Hash</th><th>Size</th><th>Elo</th><th>Games</th><th>Training #</th></tr>\n";
 
         let styles = "";
 
@@ -1653,84 +1657,22 @@ app.get(
             .then(count => `${count} in past hour).<br>`),
             db
             .collection("networks")
-            .aggregate([
-                // Exclude ELF network
-                {
-                    $match: {
-                        $and: [{
-                                game_count: {
-                                    $gt: 0
-                                }
-                            },
-                            {
-                                hash: {
-                                    $not: {
-                                        $in: ELF_NETWORKS
-                                    }
-                                }
-                            }
-                        ]
-                    }
-                },
-                {
-                    $sort: {
-                        _id: 1
-                    }
-                },
-                {
-                    $group: {
-                        _id: 1,
-                        networks: {
-                            $push: {
-                                _id: "$_id",
-                                hash: "$hash",
-                                game_count: "$game_count",
-                                training_count: "$training_count",
-                                filters: "$filters",
-                                blocks: "$blocks"
-                            }
-                        }
-                    }
-                },
-                {
-                    $unwind: {
-                        path: "$networks",
-                        includeArrayIndex: "networkID"
-                    }
-                },
-                {
-                    $project: {
-                        _id: "$networks._id",
-                        hash: "$networks.hash",
-                        game_count: "$networks.game_count",
-                        training_count: "$networks.training_count",
-                        filters: "$networks.filters",
-                        blocks: "$networks.blocks",
-                        networkID: 1
-                    }
-                },
-                {
-                    $sort: {
-                        networkID: -1
-                    }
-                },
-                {
-                    $limit: 10000
-                }
-            ])
+            .find({
+                enabled: 1
+            })
+            .sort({
+                elo: -1
+            })
             //db.collection("networks").find({ game_count: { $gt: 0 } }, { _id: 1, hash: 1, game_count: 1, training_count: 1}).sort( { _id: -1 } ).limit(100)
             .toArray()
             .then(list => {
                 for (const item of list) {
                     const itemmoment = new moment(item._id.getTimestamp());
 
-                    totalgames.count -= item.game_count;
+                    totalgames.count -= item.game_count || 0;
 
-                    if (!ELF_NETWORKS.includes(item.hash))
-                        network_table +=
+                    network_table +=
                         "<tr><td>" +
-                        item.networkID +
-                        "</td><td>" +
                         itemmoment.utcOffset(1).format("YYYY-MM-DD HH:mm") +
                         '</td><td><a href="/networks/' +
                         item.hash +
@@ -1741,9 +1683,9 @@ app.get(
                             `${item.blocks}x${item.filters}` :
                             "TBD") +
                         "</td><td>" +
-                        ~~bestRatings.get(item.hash) +
+                        item.elo +
                         "</td><td>" +
-                        item.game_count +
+                        (item.game_count || 0) +
                         "</td><td>" +
                         (item.training_count === 0 || item.training_count ?
                             item.training_count :
@@ -1815,194 +1757,46 @@ app.get(
             .then(saveSelfplay("all")),
             cachematches.wrap("matches", "1d", () =>
                 Promise.resolve(
-                    db
-                    .collection("matches")
-                    .aggregate([{
-                            $lookup: {
-                                localField: "network2",
-                                from: "networks",
-                                foreignField: "hash",
-                                as: "merged"
-                            }
-                        },
-                        {
-                            $unwind: "$merged"
-                        },
-                        {
-                            $lookup: {
-                                localField: "network1",
-                                from: "networks",
-                                foreignField: "hash",
-                                as: "merged1"
-                            }
-                        },
-                        {
-                            $unwind: "$merged1"
-                        },
-                        {
-                            $sort: {
-                                _id: -1
-                            }
-                        },
-                        {
-                            $limit: 100
-                        }
-                    ])
+                    db.collection("networks")
+                    .find({
+                        enabled: 0
+                    })
+                    .sort({
+                        exit_time: -1
+                    })
                     .toArray()
                     .then(list => {
                         let match_table =
-                            '<table class="matches-table" border=1><tr><th colspan=5>Test Matches (100 Most Recent)</th></tr>\n';
+                            '<table class="matches-table" border=1><tr><th colspan=6>Lose Networks</th></tr>\n';
                         match_table +=
-                            "<tr><th>Start Date</th><th>Network Hashes</th><th>Wins / Losses</th><th>Games</th><th>SPRT</th></tr>\n";
-                        styles +=
-                            ".match-test { background-color: rgba(0,0,0,0.1); font-style: italic; }\n";
+                            "<tr><th>Exit Date</th><th>Hash</th><th>Size</th><th>Elo</th><th>Games</th><th>Training #</th></tr>\n";
 
                         for (const item of list) {
-                            // The aggregate query above should not return any null network2 matches, but let's be safe.
-                            //
-                            if (item.network2 === null) continue;
+                            const itemmoment = new moment(item.exit_time);
 
-                            let win_percent = item.game_count ?
-                                ((100 * item.network1_wins) / item.game_count).toFixed(2) :
-                                null;
-                            const itemmoment = new moment(item._id.getTimestamp());
-
-                            if (win_percent) {
-                                if (win_percent >= 55) {
-                                    win_percent = "<b>" + win_percent + "</b>";
-                                }
-                                win_percent = " (" + win_percent + "%)";
-                            }
+                            totalgames.count -= item.game_count || 0;
 
                             match_table +=
-                                `<tr class="match-${item.is_test ? "test" : "regular"}">` +
-                                "<td>" +
+                                "<tr><td>" +
                                 itemmoment.utcOffset(1).format("YYYY-MM-DD HH:mm") +
-                                "</td>" +
-                                "<td>" +
-                                '<div class="tooltip">' +
-                                '<a href="/networks/' +
-                                item.network1 +
+                                '</td><td><a href="/networks/' +
+                                item.hash +
                                 '.gz">' +
-                                item.network1.slice(0, 8) +
-                                "</a>" +
-                                '<span class="tooltiptextleft">' +
-                                item.merged1.training_count.abbr(4) +
-                                (item.merged1.training_steps ?
-                                    "+" + item.merged1.training_steps.abbr(3) :
-                                    "") +
-                                (item.merged1.filters && item.merged1.blocks ?
-                                    `<br/>${item.merged1.blocks}x${item.merged1.filters}` :
-                                    "") +
-                                (item.merged1.description ?
-                                    `<br/>${item.merged1.description}` :
-                                    "") +
-                                "</span></div>&nbsp;" +
-                                '<div class="tooltip">' +
-                                ' <a href="/match-games/' +
-                                item._id +
-                                '">VS</a> ' +
-                                '<span class="tooltiptextright">' +
-                                (item.is_test ? "Test" : "Regular") +
-                                " Match" +
-                                "</span>" +
-                                "</div>&nbsp;"; // eslint-disable-line semi-style
-
-                            if (item.network2) {
-                                match_table +=
-                                    '<div class="tooltip">' +
-                                    '<a href="/networks/' +
-                                    item.network2 +
-                                    '.gz">' +
-                                    item.network2.slice(0, 8) +
-                                    "</a>" +
-                                    '<span class="tooltiptextright">' +
-                                    item.merged.training_count.abbr(4) +
-                                    (item.merged.training_steps ?
-                                        "+" + item.merged.training_steps.abbr(3) :
-                                        "") +
-                                    (item.merged.filters && item.merged.blocks ?
-                                        `<br/>${item.merged.blocks}x${item.merged.filters}` :
-                                        "") +
-                                    (item.merged.description ?
-                                        `<br/>${item.merged.description}` :
-                                        "") +
-                                    "</span></div>";
-                            } else {
-                                match_table += "BEST";
-                            }
-
-                            match_table +=
-                                "</td>" +
-                                "<td>" +
-                                item.network1_wins +
-                                " : " +
-                                item.network1_losses +
-                                (win_percent ? win_percent + "</td>" : "</td>") +
-                                "<td>" +
-                                item.game_count +
-                                " / " +
-                                item.number_to_play +
-                                "</td>" +
-                                "<td>";
-
-                            // Treat non-test match that has been promoted as PASS
-                            const promotedMatch =
-                                bestRatings.has(item.network1) && !item.is_test;
-                            switch (
-                                promotedMatch ||
-                                SPRT(item.network1_wins, item.network1_losses)
-                            ) {
-                                case true:
-                                    match_table += "<b>PASS</b>";
-                                    break;
-                                case false:
-                                    match_table += "<i>fail</i>";
-                                    break;
-                                default:
-                                    {
-                                        // -2.9444389791664403 2.9444389791664403 == range of 5.88887795833
-                                        let width = Math.round(
-                                            (100 *
-                                                (2.9444389791664403 +
-                                                    LLR(
-                                                        item.network1_wins,
-                                                        item.network1_losses,
-                                                        0,
-                                                        35
-                                                    ))) /
-                                            5.88887795833
-                                        );
-                                        let color;
-
-                                        if (width < 0) {
-                                            color = "C11B17";
-                                            width = 0;
-                                        } else if (width > 100) {
-                                            color = "0000FF";
-                                            width = 100;
-                                        } else {
-                                            color = "59E817";
-                                        }
-
-                                        styles +=
-                                        ".n" +
-                                        item.network1.slice(0, 8) +
-                                        "{ width: " +
-                                        width +
-                                        "%; background-color: #" +
-                                        color +
-                                        ";}\n";
-                                        match_table +=
-                                        '<div class="n' +
-                                        item.network1.slice(0, 8) +
-                                        '">&nbsp;</div>';
-                                    }
-                            }
-
-                            match_table += "</td></tr>\n";
+                                item.hash.slice(0, 8) +
+                                "</a></td><td>" +
+                                (item.filters && item.blocks ?
+                                    `${item.blocks}x${item.filters}` :
+                                    "TBD") +
+                                "</td><td>" +
+                                item.elo +
+                                "</td><td>" +
+                                (item.game_count || 0) +
+                                "</td><td>" +
+                                (item.training_count === 0 || item.training_count ?
+                                    item.training_count :
+                                    totalgames.count) +
+                                "</td></tr>\n";
                         }
-
                         match_table += "</table>\n";
                         return [styles, match_table];
                     })
@@ -2014,9 +1808,7 @@ app.get(
             const styles = match_and_styles[0];
             const match_table = match_and_styles[1];
 
-            let page = "<html><head>\n<title>Leela Zero</title>\n";
-            page +=
-                '<link rel="alternate" type="application/rss+xml" title="Leela Zero Best Networks" href="http://zero.sjeng.org/rss" />';
+            let page = "<html><head>\n<title>Hawkeye</title>\n";
             page +=
                 '<script type="text/javascript" src="/static/timeago.js"></script>\n';
             page += "<style>";
@@ -2044,31 +1836,6 @@ app.get(
             page += "</style>\n";
             page += "</head><body>\n";
 
-            page +=
-                'Leela Zero is available from: <a href="https://github.com/gcp/leela-zero">Github</a>.<br>';
-            page +=
-                'Check out the <a href="https://github.com/gcp/leela-zero/blob/master/FAQ.md">FAQ</a> and ';
-            page +=
-                '<a href="https://github.com/gcp/leela-zero/blob/master/README.md">README</a>.<br>';
-            page +=
-                '<br>A new front page is being tested at <a href="http://zero.sjeng.org/home">http://zero.sjeng.org/home</a>. Please review and provide feedback <a href="https://github.com/gcp/leela-zero-server/issues/170">here</a>.<br>';
-            page +=
-                "<br>Autogtp will automatically download better networks once found.<br>";
-            page +=
-                "Not each trained network will be a strength improvement over the prior one. Patience please. :)<br>";
-            page += "Match games are played at full strength (only 1600 visits).<br>";
-            page +=
-                "Self-play games are played with some randomness and noise for all moves.<br>";
-            page +=
-                "Training data from self-play games are full strength even if plays appear weak.<br>";
-            page += "<br>";
-            page +=
-                '2018-10-31 <a href="https://github.com/gcp/leela-zero/releases">Leela Zero 0.16 + AutoGTP v17</a>.<br>';
-            page +=
-                "2018-07-28 Force promoted V20-2 as new 20 block starting point network. Selfplay and matches now use 1600 visits.<br>";
-            page +=
-                '2018-05-09 <a href="https://github.com/gcp/leela-zero/releases">Leela Zero 0.15 + AutoGTP v16</a>. <b>Update required.</b><br>';
-            page += "<br>";
 
             responses.map(response => (page += response));
 
@@ -2092,14 +1859,6 @@ app.get(
             });
 
             page += "<br><br>";
-            page += '<a href="https://sjeng.org/zero/">Raw SGF files</a>.<br>';
-            page +=
-                '<a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vTsHu7T9vbfLsYOIANnUX9rHAYu7lQ4AlpVIvCfn60G7BxNZ0JH4ulfbADEedPVgwHxaH5MczdH853l/pubchart?oid=286613333&format=interactive">Original strength graph</a>. (Mostly obsolete.)<br>';
-            page += "<br>";
-            page +=
-                '<h4>Recent Strength Graph (<a href="/static/elo.html">Full view</a>.)</h4>';
-            page +=
-                '<iframe width="950" height="655" seamless frameborder="0" scrolling="no" src="/static/elo.html?0#recent=2500000"></iframe><script>(i => i.contentWindow.location = i.src)(document.querySelector("iframe"))</script>';
             page += "<br><br>Times are in GMT+0100 (CET)<br>\n";
             page += network_table;
             page += match_table;
