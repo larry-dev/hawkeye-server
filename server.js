@@ -768,7 +768,7 @@ app.post(
 
                 let elo = nets.length >= 3 ? nets[1].elo : 0;
                 let lossId = nets.length >= 3 ? nets[2]._id : null;
-                const now = Math.round(Date.now() / 1000);
+                const now = Date.now();
                 const set = {
                     hash: req.files.weights.hash,
                     ip: req.ip,
@@ -1750,7 +1750,7 @@ app.get(
                             "<tr><th>Exit Date</th><th>Hash</th><th>Size</th><th>Elo</th><th>Games</th><th>Training #</th></tr>\n";
 
                         for (const item of list) {
-                            const itemmoment = new moment(item.exit_time);
+                            const itemmoment = new moment(item.exit_time * 1000);
 
                             totalgames.count -= item.game_count || 0;
 
