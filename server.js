@@ -906,8 +906,8 @@ app.post(
 
         if (!req.body.random_seed) return logAndFail("No random_seed provided.");
 
-        if (!check_match_verification(req.body))
-            return logAndFail("Verification failed.");
+        // if (!check_match_verification(req.body))
+        //     return logAndFail("Verification failed.");
 
         // Convert random_seed to Long, which is signed, after verifying the string
         req.body.random_seed = Long.fromString(req.body.random_seed, 10);
