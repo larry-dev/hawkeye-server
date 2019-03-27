@@ -950,7 +950,8 @@ app.post(
                                         data: trainingdatafile,
                                         clientversion: Number(clientversion),
                                         winnercolor: req.body.winnercolor,
-                                        random_seed: req.body.random_seed
+                                        random_seed: req.body.random_seed,
+                                        upload_time: Date.now()
                                     }
                                 }, {
                                     upsert: true
