@@ -1733,53 +1733,49 @@ app.get(
             .limit(10)
             .toArray()
             .then(saveSelfplay("all")),
-            cachematches.wrap("matches", "1d", () =>
-                Promise.resolve(
-                    db.collection("networks")
-                    .find({
-                        enabled: 0
-                    })
-                    .sort({
-                        exit_time: -1
-                    })
-                    .toArray()
-                    .then(list => {
-                        let match_table =
-                            '<table class="matches-table" border=1><tr><th colspan=6>Lose Networks</th></tr>\n';
-                        match_table +=
-                            "<tr><th>Exit Date</th><th>Hash</th><th>Size</th><th>Elo</th><th>Games</th><th>Training #</th></tr>\n";
+            db.collection("networks")
+            .find({
+                enabled: 0
+            })
+            .sort({
+                exit_time: -1
+            })
+            .toArray()
+            .then(list => {
+                let match_table =
+                    '<table class="matches-table" border=1><tr><th colspan=6>Lose Networks</th></tr>\n';
+                match_table +=
+                    "<tr><th>Exit Date</th><th>Hash</th><th>Size</th><th>Elo</th><th>Games</th><th>Training #</th></tr>\n";
 
-                        for (const item of list) {
-                            const itemmoment = new moment(item.exit_time);
+                for (const item of list) {
+                    const itemmoment = new moment(item.exit_time);
 
-                            totalgames.count -= item.game_count || 0;
+                    totalgames.count -= item.game_count || 0;
 
-                            match_table +=
-                                "<tr><td>" +
-                                itemmoment.utcOffset(1).format("YYYY-MM-DD HH:mm") +
-                                '</td><td><a href="/networks/' +
-                                item.hash +
-                                '.gz">' +
-                                item.hash.slice(0, 8) +
-                                "</a></td><td>" +
-                                (item.filters && item.blocks ?
-                                    `${item.blocks}x${item.filters}` :
-                                    "TBD") +
-                                "</td><td>" +
-                                item.elo.toFixed(3) +
-                                "</td><td>" +
-                                (item.game_count || 0) +
-                                "</td><td>" +
-                                (item.training_count === 0 || item.training_count ?
-                                    item.training_count :
-                                    totalgames.count) +
-                                "</td></tr>\n";
-                        }
-                        match_table += "</table>\n";
-                        return [styles, match_table];
-                    })
-                )
-            )
+                    match_table +=
+                        "<tr><td>" +
+                        itemmoment.utcOffset(1).format("YYYY-MM-DD HH:mm") +
+                        '</td><td><a href="/networks/' +
+                        item.hash +
+                        '.gz">' +
+                        item.hash.slice(0, 8) +
+                        "</a></td><td>" +
+                        (item.filters && item.blocks ?
+                            `${item.blocks}x${item.filters}` :
+                            "TBD") +
+                        "</td><td>" +
+                        item.elo.toFixed(3) +
+                        "</td><td>" +
+                        (item.game_count || 0) +
+                        "</td><td>" +
+                        (item.training_count === 0 || item.training_count ?
+                            item.training_count :
+                            totalgames.count) +
+                        "</td></tr>\n";
+                }
+                match_table += "</table>\n";
+                return [styles, match_table];
+            })
         ]).then(responses => {
             const match_and_styles = responses.pop();
 
