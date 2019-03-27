@@ -1750,7 +1750,7 @@ app.get(
                             "<tr><th>Exit Date</th><th>Hash</th><th>Size</th><th>Elo</th><th>Games</th><th>Training #</th></tr>\n";
 
                         for (const item of list) {
-                            const itemmoment = new moment(item.exit_time * 1000);
+                            const itemmoment = new moment(item.exit_time);
 
                             totalgames.count -= item.game_count || 0;
 
