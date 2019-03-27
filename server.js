@@ -316,45 +316,25 @@ async function get_pending_matches() {
 async function get_best_network_hash() {
     // Check if file has changed. If not, send cached version instead.
     //
-    return fs
-        .stat(__dirname + "/network/best-network.gz")
-        .then(stats => {
-            if (!best_network_hash_promise || best_network_mtimeMs != stats.mtimeMs) {
-                best_network_mtimeMs = stats.mtimeMs;
-
-                best_network_hash_promise = new Promise((resolve, reject) => {
-                    log_memory_stats("best_network_hash_promise begins");
-
-                    const rstream = fs.createReadStream(
-                        __dirname + "/network/best-network.gz"
-                    );
-                    const gunzip = zlib.createGunzip();
-                    const hash = crypto.createHash("sha256");
-
-                    hash.setEncoding("hex");
-
-                    log_memory_stats("Streams prepared");
-
-                    rstream
-                        .pipe(gunzip)
-                        .pipe(hash)
-                        .on("error", err => {
-                            console.error(
-                                "Error opening/gunzip/hash best-network.gz: " + err
-                            );
-                            reject(err);
-                        })
-                        .on("finish", () => {
-                            const best_network_hash = hash.read();
-                            log_memory_stats("Streams completed: " + best_network_hash);
-                            resolve(best_network_hash);
-                        });
-                });
-            }
-
-            return best_network_hash_promise;
-        })
-        .catch(err => console.error(err));
+    return new Promise((resolve, reject) => {
+        db.collection("networks").find({
+                enabled: 1
+            }).sort({
+                elo: -1
+            })
+            .toArray()
+            .then(list => {
+                if (list.length > 0) {
+                    resolve(list[0].hash);
+                } else {
+                    console.log("not best networks")
+                    resolve("")
+                }
+            }).catch(err => {
+                console.log("not best networks")
+                resolve("")
+            })
+    });
 }
 
 const PESSIMISTIC_RATE = 0.4;
