@@ -910,7 +910,6 @@ app.post(
         //     return logAndFail("Verification failed.");
 
         // Convert random_seed to Long, which is signed, after verifying the string
-        const clientversion = req.body.clientversion;
         req.body.random_seed = Long.fromString(req.body.random_seed, 10);
         req.body.task_time = get_timestamp_from_seed(req.body.random_seed);
         let trainingdatafile;
@@ -921,6 +920,7 @@ app.post(
         const trainbuffer = Buffer.from(req.files.trainingdata.data);
         const networkhash = req.body.winnerhash;
         const loserhash = req.body.loserhash;
+        console.log(networkhash, loserhash);
         let winner = await db.collection("networks").findOne({
             hash: networkhash,
         });
@@ -950,8 +950,7 @@ app.post(
                             trainingdatafile = trainbuffer.toString();
 
 
-                            var elo = calc_elo(winner.elo, loser.elo);
-                            console.log(winner.elo, loser.elo, elo);
+                            let elo = calc_elo(winner.elo, loser.elo);
                             db.collection("games").updateOne({
                                     sgfhash
                                 }, {
