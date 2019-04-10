@@ -439,6 +439,7 @@ MongoClient.connect(MONGODB_URL, (err, database) => {
                 if (result._id.type == "ELF") elf_counter = result.total;
                 else counter = result.total;
             });
+            counter = counter / 2;
             console.log(counter + " LZ games, " + elf_counter + " ELF games.");
 
             app.listen(8080, () => {
