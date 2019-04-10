@@ -1578,7 +1578,7 @@ app.get(
             .count()
             .then(
                 count =>
-                `${counter} total <a href="/self-plays">self-play games</a> (${count} in past 24 hours, `
+                `${counter} total <a href="/self-plays">self-play games</a> ${count} in past 24 hours.<br/> `
             ),
             db
             .collection("match_games")
