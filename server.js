@@ -1578,7 +1578,19 @@ app.get(
             .count()
             .then(
                 count =>
-                `${counter} total <a href="/self-plays">self-play games</a> ${count} in past 24 hours.<br/> `
+                `${counter} total <a href="/self-plays">self-play games</a> (${count} in past 24 hours, `
+            ),
+            db
+            .collection("games")
+            .find({
+                _id: {
+                    $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60)
+                }
+            })
+            .count()
+            .then(
+                count =>
+                `${count} in past hour).<br/>`
             ),
             db
             .collection("match_games")
