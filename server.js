@@ -441,7 +441,6 @@ MongoClient.connect(MONGODB_URL, (err, database) => {
             });
             counter = counter / 2;
             console.log(counter + " LZ games, " + elf_counter + " ELF games.");
-
             app.listen(8080, () => {
                 console.log("listening on 8080");
             });
@@ -1633,7 +1632,7 @@ app.get(
 
                     network_table +=
                         "<tr><td>" +
-                        itemmoment.utcOffset(1).format("YYYY-MM-DD HH:mm") +
+                        itemmoment.utcOffset(8).format("YYYY-MM-DD HH:mm") +
                         '</td><td><a href="/networks/' +
                         item.hash +
                         '.gz">' +
@@ -1736,7 +1735,7 @@ app.get(
 
                     match_table +=
                         "<tr><td>" +
-                        itemmoment.utcOffset(1).format("YYYY-MM-DD HH:mm") +
+                        itemmoment.utcOffset(8).format("YYYY-MM-DD HH:mm") +
                         '</td><td><a href="/networks/' +
                         item.hash +
                         '.gz">' +
@@ -1815,7 +1814,7 @@ app.get(
             });
 
             page += "<br><br>";
-            page += "<br><br>Times are in GMT+0100 (CET)<br>\n";
+            page += "<br><br>Times are in GMT+0800<br>\n";
             page += network_table;
             page += match_table;
             page += "</body></html>";
