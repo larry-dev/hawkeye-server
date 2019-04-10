@@ -1580,18 +1580,6 @@ app.get(
                 `${counter} total <a href="/self-plays">self-play games</a> (${count} in past 24 hours, `
             ),
             db
-            .collection("games")
-            .find({
-                _id: {
-                    $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60)
-                }
-            })
-            .count()
-            .then(
-                count =>
-                `${count} in past hour, <a href="https://github.com/gcp/leela-zero/issues/1311#issuecomment-386422486">includes ${elf_counter} ELF</a>).<br/>`
-            ),
-            db
             .collection("match_games")
             .find()
             .count()
