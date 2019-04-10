@@ -1911,7 +1911,10 @@ app.get(
             visits: "1601",
             resignation_percent: "5",
             noise: "true",
-            randomcnt: "30"
+            randomcnt: "30",
+            cbase: "19652.0",
+            puct: "1.25",
+            lcb_min_visit_ratio: "0.1"
         };
 
         if (Math.random() < 0.1) options.resignation_percent = "0";
