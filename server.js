@@ -153,7 +153,7 @@ let db;
 let pending_matches = [];
 const MATCH_EXPIRE_TIME = 30 * 60 * 1000; // matches expire after 30 minutes. After that the match will be lost and an extra request will be made.
 function calc_elo(winner, loser) {
-    let e = 1 / (1 + Math.pow(10, (loser - winner) / 100))
+    let e = 1 / (1 + Math.pow(10, (loser - winner) / 400))
     let score = 16 * (1 - e);
     return score;
 }
