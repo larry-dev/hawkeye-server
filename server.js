@@ -1600,6 +1600,30 @@ app.get(
     const best_network_hash = await get_best_network_hash();
 
     Promise.all([
+      cacheIP24hr
+        .wrap("IP24hr", "5m", () => {
+          return Promise.resolve(
+            db.collection("games").distinct("ip", {
+              _id: {
+                $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60 * 24)
+              }
+            })
+          );
+        })
+        .then(list => {
+          return list.length + " clients in past 24 hours, ";
+        }),
+      cacheIP1hr
+        .wrap("IP1hr", "30s", () => {
+          return Promise.resolve(
+            db.collection("games").distinct("ip", {
+              _id: { $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60) }
+            })
+          );
+        })
+        .then(list => {
+          return list.length + " in past hour.<br>";
+        }),
       db
         .collection("games")
         .find({
