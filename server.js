@@ -955,7 +955,6 @@ app.post(
               trainingdatafile = trainbuffer.toString();
 
               let elo = calc_elo(winner.elo, loser.elo);
-              console.log(winner.elo, loser.elo, elo);
               db.collection("games").updateOne({
                   sgfhash
                 }, {
@@ -1115,7 +1114,6 @@ app.post(
 
                     if (nets.length == 3) {
                       let hash = nets[2].hash;
-                      console.log(hash, "==========");
                       if (hash == req.body.winnerhash || hash == req.body.loserhash) {
                         db.collection("networks").updateOne({
                             hash: hash
