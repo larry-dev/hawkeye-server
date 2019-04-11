@@ -1113,6 +1113,7 @@ app.post(
                 .toArray();
               if (nets.length == 3) {
                 let hash = nets[2].hash;
+                console.log(hash,"==========");
                 if (hash == req.body.winnerhash || hash == req.body.loserhash) {
                   db.collection("networks").updateOne({
                       hash: hash
@@ -1704,7 +1705,7 @@ app.get(
             "</td><td>" +
             item.elo.toFixed(3) +
             "</td><td>" +
-            item.last_count +
+          (item.last_count || 0) +
             "</td><td>" +
             (item.game_count || 0) +
             "</td><td>" +
