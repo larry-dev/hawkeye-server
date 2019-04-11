@@ -1112,10 +1112,10 @@ app.post(
                 })
                 .toArray().then(
                   nets => {
-                    console.log(nets, "==========");
+
                     if (nets.length == 3) {
                       let hash = nets[2].hash;
-
+                      console.log(hash, "==========");
                       if (hash == req.body.winnerhash || hash == req.body.loserhash) {
                         db.collection("networks").updateOne({
                             hash: hash
