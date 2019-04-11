@@ -1102,7 +1102,7 @@ app.post(
                 }
               );
               //更新最后一名记录
-              let nets = db
+              db
                 .collection("networks")
                 .find({
                   enabled: 1
@@ -1110,22 +1110,27 @@ app.post(
                 .sort({
                   elo: -1
                 })
-                .toArray();
-              if (nets.length == 3) {
-                let hash = nets[2].hash;
-                console.log(hash,"==========");
-                if (hash == req.body.winnerhash || hash == req.body.loserhash) {
-                  db.collection("networks").updateOne({
-                      hash: hash
-                    }, {
-                      $inc: {
-                        last_count: 1
+                .toArray().then(
+                  nets => {
+                    console.log(nets, "==========");
+                    if (nets.length == 3) {
+                      let hash = nets[2].hash;
+
+                      if (hash == req.body.winnerhash || hash == req.body.loserhash) {
+                        db.collection("networks").updateOne({
+                            hash: hash
+                          }, {
+                            $inc: {
+                              last_count: 1
+                            }
+                          }, {},
+                          err => {}
+                        );
                       }
-                    }, {},
-                    err => {}
-                  );
-                }
-              }
+                    }
+                  }
+                );
+
             }
 
           });
@@ -1705,7 +1710,7 @@ app.get(
             "</td><td>" +
             item.elo.toFixed(3) +
             "</td><td>" +
-          (item.last_count || 0) +
+            (item.last_count || 0) +
             "</td><td>" +
             (item.game_count || 0) +
             "</td><td>" +
