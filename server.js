@@ -729,8 +729,8 @@ app.post(
             enabled: 1
           })
           .sort({
-            elo: -1,
-            last_count: 1
+            last_count: 1,
+            elo: -1
           })
           .toArray();
         if (!req.body.key || req.body.key != auth_key) {
