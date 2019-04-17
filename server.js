@@ -1114,17 +1114,15 @@ app.post(
 
                     if (nets.length == 3) {
                       let hash = nets[2].hash;
-                      if (hash == req.body.winnerhash || hash == req.body.loserhash) {
-                        db.collection("networks").updateOne({
-                            hash: hash
-                          }, {
-                            $inc: {
-                              last_count: 1
-                            }
-                          }, {},
-                          err => {}
-                        );
-                      }
+                      db.collection("networks").updateOne({
+                          hash: hash
+                        }, {
+                          $inc: {
+                            last_count: 1
+                          }
+                        }, {},
+                        err => {}
+                      );
                     }
                   }
                 );
