@@ -61,7 +61,8 @@ mongoMorgan.token("epochtime", () => Date.now());
 app.use(
   mongoMorgan(
     MONGODB_URL,
-    '{"method": ":method", "url": ":url", "status": :status, "response-time": :response-time, "time": :epochtime}', {
+    '{"method": ":method", "url": ":url", "status": :status, "response-time": :response-time, "time": :epochtime}',
+    {
       collection: "logs"
     }
   )
@@ -162,18 +163,18 @@ function get_options_hash(options) {
   if (options.visits) {
     return checksum(
       "" +
-      options.visits +
-      options.resignation_percent +
-      options.noise +
-      options.randomcnt
+        options.visits +
+        options.resignation_percent +
+        options.noise +
+        options.randomcnt
     ).slice(0, 6);
   } else {
     return checksum(
       "" +
-      options.playouts +
-      options.resignation_percent +
-      options.noise +
-      options.randomcnt
+        options.playouts +
+        options.resignation_percent +
+        options.noise +
+        options.randomcnt
     ).slice(0, 6);
   }
 }
@@ -184,11 +185,14 @@ async function get_fast_clients() {
     // Get some recent self-play games to calculate durations from seeds
     const games = await db
       .collection("games")
-      .find({}, {
-        ip: 1,
-        movescount: 1,
-        random_seed: 1
-      })
+      .find(
+        {},
+        {
+          ip: 1,
+          movescount: 1,
+          random_seed: 1
+        }
+      )
       .sort({
         _id: -1
       })
@@ -230,15 +234,15 @@ async function get_fast_clients() {
     const sortedRates = [...fastClientsMap.values()].sort((a, b) => a - b);
     const quartile = n => {
       const index = (n / 4) * (sortedRates.length - 1);
-      return index % 1 == 0 ?
-        sortedRates[index] :
-        (sortedRates[Math.floor(index)] + sortedRates[Math.ceil(index)]) / 2;
+      return index % 1 == 0
+        ? sortedRates[index]
+        : (sortedRates[Math.floor(index)] + sortedRates[Math.ceil(index)]) / 2;
     };
     console.log(
       "Client moves per minute rates:",
       ["min", "25%", "median", "75%", "max"]
-      .map((text, index) => `${quartile(index).toFixed(1)} ${text}`)
-      .join(", ")
+        .map((text, index) => `${quartile(index).toFixed(1)} ${text}`)
+        .join(", ")
     );
 
     // Keep only clients that have the top 25% rates
@@ -265,16 +269,19 @@ async function get_pending_matches() {
 
   return new Promise((resolve, reject) => {
     db.collection("matches")
-      .aggregate([{
-        $redact: {
-          $cond: [{
-              $gt: ["$number_to_play", "$game_count"]
-            },
-            "$$KEEP",
-            "$$PRUNE"
-          ]
+      .aggregate([
+        {
+          $redact: {
+            $cond: [
+              {
+                $gt: ["$number_to_play", "$game_count"]
+              },
+              "$$KEEP",
+              "$$PRUNE"
+            ]
+          }
         }
-      }])
+      ])
       .sort({
         _id: -1
       })
@@ -409,24 +416,26 @@ MongoClient.connect(MONGODB_URL, (err, database) => {
     });
 
   db.collection("networks").aggregate(
-    [{
-      $group: {
-        _id: {
-          type: {
-            $cond: {
-              if: {
-                $in: ["$hash", ELF_NETWORKS]
-              },
-              then: "ELF",
-              else: "LZ"
+    [
+      {
+        $group: {
+          _id: {
+            type: {
+              $cond: {
+                if: {
+                  $in: ["$hash", ELF_NETWORKS]
+                },
+                then: "ELF",
+                else: "LZ"
+              }
             }
+          },
+          total: {
+            $sum: "$game_count"
           }
-        },
-        total: {
-          $sum: "$game_count"
         }
       }
-    }],
+    ],
     (err, res) => {
       if (err) console.log(err);
 
@@ -504,10 +513,10 @@ app.use(
 
     console.log(
       req.ip +
-      " (" +
-      req.headers["x-real-ip"] +
-      ") " +
-      " downloaded /best-network"
+        " (" +
+        req.headers["x-real-ip"] +
+        ") " +
+        " downloaded /best-network"
     );
   })
 );
@@ -612,11 +621,11 @@ app.post("/request-match", (req, res) => {
     .catch(err => {
       console.error(
         req.ip +
-        " (" +
-        req.headers["x-real-ip"] +
-        ") " +
-        " ERROR: Match addition failed: " +
-        err
+          " (" +
+          req.headers["x-real-ip"] +
+          ") " +
+          " ERROR: Match addition failed: " +
+          err
       );
       res.send("ERROR: Match addition failed\n");
     });
@@ -736,10 +745,10 @@ app.post(
         if (!req.body.key || req.body.key != auth_key) {
           console.log(
             "AUTH FAIL: '" +
-            String(req.body.key) +
-            "' VS '" +
-            String(auth_key) +
-            "'"
+              String(req.body.key) +
+              "' VS '" +
+              String(auth_key) +
+              "'"
           );
           return res.status(400).send("Incorrect key provided.");
         }
@@ -771,35 +780,35 @@ app.post(
         // No training count given, we'll calculate it from database.
         //
         if (!set.training_count) {
-          const cursor = db.collection("networks").aggregate([{
-            $group: {
-              _id: 1,
-              count: {
-                $sum: "$game_count"
+          const cursor = db.collection("networks").aggregate([
+            {
+              $group: {
+                _id: 1,
+                count: {
+                  $sum: "$game_count"
+                }
               }
             }
-          }]);
+          ]);
           const totalgames = await cursor.next();
           set.training_count = totalgames.count;
         }
 
         // Prepare variables for printing messages
         //
-        const {
-          blocks,
-          filters,
-          hash,
-          training_count
-        } = set;
+        const { blocks, filters, hash, training_count } = set;
         if (lossId) {
-          db.collection("networks").updateOne({
+          db.collection("networks").updateOne(
+            {
               _id: lossId
-            }, {
+            },
+            {
               $set: {
                 enabled: 0,
                 exit_time: now
               }
-            }, {
+            },
+            {
               upsert: true
             },
             (err, dbres) => {
@@ -825,11 +834,14 @@ app.post(
             }
           );
         }
-        db.collection("networks").updateOne({
+        db.collection("networks").updateOne(
+          {
             hash: set.hash
-          }, {
+          },
+          {
             $set: set
-          }, {
+          },
+          {
             upsert: true
           },
           (err, dbres) => {
@@ -855,18 +867,19 @@ app.post(
             }
           }
         );
-        db.collection("networks").update({
+        db.collection("networks").update(
+          {
             enabled: 1
-          }, {
+          },
+          {
             $set: {
               last_count: 0
             }
-          }, {
+          },
+          {
             multi: true
           },
-          (err, dbres) => {
-
-          }
+          (err, dbres) => {}
         );
       });
   })
@@ -933,10 +946,10 @@ app.post(
       res.send("Game data " + sgfhash + " stored in database\n");
       console.log(
         "FAKE/SPAM reply sent to " +
-        "xxx" +
-        " (" +
-        req.headers["x-real-ip"] +
-        ")"
+          "xxx" +
+          " (" +
+          req.headers["x-real-ip"] +
+          ")"
       );
     } else {
       zlib.unzip(sgfbuffer, (err, sgfbuffer) => {
@@ -955,17 +968,20 @@ app.post(
               trainingdatafile = trainbuffer.toString();
 
               let elo = calc_elo(winner.elo, loser.elo);
-              db.collection("games").updateOne({
+              db.collection("games").updateOne(
+                {
                   sgfhash
-                }, {
+                },
+                {
                   $set: {
                     ip: req.ip,
                     networkhash,
                     sgf: sgffile,
                     loserhash,
                     options_hash: req.body.options_hash,
-                    movescount: req.body.movescount ?
-                      Number(req.body.movescount) : null,
+                    movescount: req.body.movescount
+                      ? Number(req.body.movescount)
+                      : null,
                     data: trainingdatafile,
                     clientversion: Number(clientversion),
                     winnercolor: req.body.winnercolor,
@@ -973,7 +989,8 @@ app.post(
                     upload_time: Date.now(),
                     download: false
                   }
-                }, {
+                },
+                {
                   upsert: true
                 },
                 err => {
@@ -982,15 +999,15 @@ app.post(
                   if (err) {
                     console.log(
                       req.ip +
-                      " (" +
-                      req.headers["x-real-ip"] +
-                      ") " +
-                      " uploaded game #" +
-                      counter +
-                      ": " +
-                      sgfhash +
-                      " ERROR: " +
-                      err
+                        " (" +
+                        req.headers["x-real-ip"] +
+                        ") " +
+                        " uploaded game #" +
+                        counter +
+                        ": " +
+                        sgfhash +
+                        " ERROR: " +
+                        err
                     );
                     res.send("Game data " + sgfhash + " stored in database\n");
                   } else {
@@ -1014,86 +1031,92 @@ app.post(
                 }
               );
 
-              db.collection("networks").updateOne({
+              db.collection("networks").updateOne(
+                {
                   hash: req.body.winnerhash
-                }, {
+                },
+                {
                   $inc: {
                     game_count: 1
                   },
                   $set: {
                     elo: winner.elo + elo
                   }
-                }, {},
+                },
+                {},
                 err => {
                   if (err) {
                     if (ELF_NETWORKS.includes(networkhash))
                       console.log(
                         req.ip +
-                        " (" +
-                        req.headers["x-real-ip"] +
-                        ") " +
-                        " uploaded ELF game #" +
-                        elf_counter +
-                        ": " +
-                        sgfhash +
-                        " INCREMENT ERROR: " +
-                        err
+                          " (" +
+                          req.headers["x-real-ip"] +
+                          ") " +
+                          " uploaded ELF game #" +
+                          elf_counter +
+                          ": " +
+                          sgfhash +
+                          " INCREMENT ERROR: " +
+                          err
                       );
                     else
                       console.log(
                         req.ip +
-                        " (" +
-                        req.headers["x-real-ip"] +
-                        ") " +
-                        " uploaded LZ game #" +
-                        counter +
-                        ": " +
-                        sgfhash +
-                        " INCREMENT ERROR: " +
-                        err
+                          " (" +
+                          req.headers["x-real-ip"] +
+                          ") " +
+                          " uploaded LZ game #" +
+                          counter +
+                          ": " +
+                          sgfhash +
+                          " INCREMENT ERROR: " +
+                          err
                       );
                   } else {
                     //console.log("Incremented " + networkhash);
                   }
                 }
               );
-              db.collection("networks").updateOne({
+              db.collection("networks").updateOne(
+                {
                   hash: req.body.loserhash
-                }, {
+                },
+                {
                   $inc: {
                     game_count: 1
                   },
                   $set: {
                     elo: loser.elo - elo
                   }
-                }, {},
+                },
+                {},
                 err => {
                   if (err) {
                     if (ELF_NETWORKS.includes(networkhash))
                       console.log(
                         req.ip +
-                        " (" +
-                        req.headers["x-real-ip"] +
-                        ") " +
-                        " uploaded ELF game #" +
-                        elf_counter +
-                        ": " +
-                        sgfhash +
-                        " INCREMENT ERROR: " +
-                        err
+                          " (" +
+                          req.headers["x-real-ip"] +
+                          ") " +
+                          " uploaded ELF game #" +
+                          elf_counter +
+                          ": " +
+                          sgfhash +
+                          " INCREMENT ERROR: " +
+                          err
                       );
                     else
                       console.log(
                         req.ip +
-                        " (" +
-                        req.headers["x-real-ip"] +
-                        ") " +
-                        " uploaded LZ game #" +
-                        counter +
-                        ": " +
-                        sgfhash +
-                        " INCREMENT ERROR: " +
-                        err
+                          " (" +
+                          req.headers["x-real-ip"] +
+                          ") " +
+                          " uploaded LZ game #" +
+                          counter +
+                          ": " +
+                          sgfhash +
+                          " INCREMENT ERROR: " +
+                          err
                       );
                   } else {
                     //console.log("Incremented " + networkhash);
@@ -1101,34 +1124,35 @@ app.post(
                 }
               );
               //更新最后一名记录
-              db
-                .collection("networks")
+              db.collection("networks")
                 .find({
                   enabled: 1
                 })
                 .sort({
                   elo: -1
                 })
-                .toArray().then(
-                  nets => {
-
-                    if (nets.length == 3) {
-                      let hash = nets[2].hash;
-                      db.collection("networks").updateOne({
+                .toArray()
+                .then(nets => {
+                  if (nets.length == 3) {
+                    let hash = nets[2].hash;
+                    let gameCount = nets[2].game_count;
+                    if (gameCount > 0) {
+                      db.collection("networks").updateOne(
+                        {
                           hash: hash
-                        }, {
+                        },
+                        {
                           $inc: {
                             last_count: 1
                           }
-                        }, {},
+                        },
+                        {},
                         err => {}
                       );
                     }
                   }
-                );
-
+                });
             }
-
           });
         }
       });
@@ -1200,22 +1224,26 @@ app.post("/submit", (req, res) => {
           } else {
             trainingdatafile = trainbuffer.toString();
 
-            db.collection("games").updateOne({
+            db.collection("games").updateOne(
+              {
                 sgfhash
-              }, {
+              },
+              {
                 $set: {
                   ip: req.ip,
                   networkhash,
                   sgf: sgffile,
                   options_hash: req.body.options_hash,
-                  movescount: req.body.movescount ?
-                    Number(req.body.movescount) : null,
+                  movescount: req.body.movescount
+                    ? Number(req.body.movescount)
+                    : null,
                   data: trainingdatafile,
                   clientversion: Number(clientversion),
                   winnercolor: req.body.winnercolor,
                   random_seed: req.body.random_seed
                 }
-              }, {
+              },
+              {
                 upsert: true
               },
               err => {
@@ -1224,15 +1252,15 @@ app.post("/submit", (req, res) => {
                 if (err) {
                   console.log(
                     req.ip +
-                    " (" +
-                    req.headers["x-real-ip"] +
-                    ") " +
-                    " uploaded game #" +
-                    counter +
-                    ": " +
-                    sgfhash +
-                    " ERROR: " +
-                    err
+                      " (" +
+                      req.headers["x-real-ip"] +
+                      ") " +
+                      " uploaded game #" +
+                      counter +
+                      ": " +
+                      sgfhash +
+                      " ERROR: " +
+                      err
                   );
                   res.send("Game data " + sgfhash + " stored in database\n");
                 } else {
@@ -1256,40 +1284,43 @@ app.post("/submit", (req, res) => {
               }
             );
 
-            db.collection("networks").updateOne({
+            db.collection("networks").updateOne(
+              {
                 hash: networkhash
-              }, {
+              },
+              {
                 $inc: {
                   game_count: 1
                 }
-              }, {},
+              },
+              {},
               err => {
                 if (err) {
                   if (ELF_NETWORKS.includes(networkhash))
                     console.log(
                       req.ip +
-                      " (" +
-                      req.headers["x-real-ip"] +
-                      ") " +
-                      " uploaded ELF game #" +
-                      elf_counter +
-                      ": " +
-                      sgfhash +
-                      " INCREMENT ERROR: " +
-                      err
+                        " (" +
+                        req.headers["x-real-ip"] +
+                        ") " +
+                        " uploaded ELF game #" +
+                        elf_counter +
+                        ": " +
+                        sgfhash +
+                        " INCREMENT ERROR: " +
+                        err
                     );
                   else
                     console.log(
                       req.ip +
-                      " (" +
-                      req.headers["x-real-ip"] +
-                      ") " +
-                      " uploaded LZ game #" +
-                      counter +
-                      ": " +
-                      sgfhash +
-                      " INCREMENT ERROR: " +
-                      err
+                        " (" +
+                        req.headers["x-real-ip"] +
+                        ") " +
+                        " uploaded LZ game #" +
+                        counter +
+                        ": " +
+                        sgfhash +
+                        " INCREMENT ERROR: " +
+                        err
                     );
                 } else {
                   //console.log("Incremented " + networkhash);
@@ -1325,7 +1356,8 @@ app.get(
             $in: ELF_NETWORKS
           }
         },
-        $or: [{
+        $or: [
+          {
             game_count: {
               $gt: 0
             }
@@ -1397,10 +1429,10 @@ app.get(
       await new Promise((resolve, reject) => {
         // GitHub style
         retricon(network.hash, {
-            pixelSize: 70,
-            imagePadding: 35,
-            bgColor: "#F0F0F0"
-          })
+          pixelSize: 70,
+          imagePadding: 35,
+          bgColor: "#F0F0F0"
+        })
           .pngStream()
           .pipe(fs.createWriteStream(avatar_path))
           .on("finish", resolve)
@@ -1449,7 +1481,8 @@ app.get(
       const networks = await db
         .collection("networks")
         .find({
-          $or: [{
+          $or: [
+            {
               game_count: {
                 $gt: 0
               }
@@ -1585,12 +1618,7 @@ app.get(
     };
     const saveSelfplay = type => games => {
       recentSelfplay[type] = games.map(
-        ({
-          movescount,
-          networkhash,
-          sgfhash,
-          winnercolor
-        }) => ({
+        ({ movescount, networkhash, sgfhash, winnercolor }) => ({
           sgfhash,
           text: `${networkhash.slice(0, 4)}/${movescount}${winnercolor.slice(
             0,
@@ -1601,14 +1629,16 @@ app.get(
       return "";
     };
 
-    const cursor = db.collection("networks").aggregate([{
-      $group: {
-        _id: 1,
-        count: {
-          $sum: "$game_count"
+    const cursor = db.collection("networks").aggregate([
+      {
+        $group: {
+          _id: 1,
+          count: {
+            $sum: "$game_count"
+          }
         }
       }
-    }]);
+    ]);
     const totalgames = await cursor.next();
 
     const best_network_hash = await get_best_network_hash();
@@ -1633,195 +1663,199 @@ app.get(
       //       return list.length + " in past hour.<br>";
       //     }),
       db
-      .collection("games")
-      .find({
-        _id: {
-          $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60 * 24)
-        }
-      })
-      .count()
-      .then(
-        count =>
-        `${counter} total <a href="/self-plays">self-play games</a> (${count} in past 24 hours, `
-      ),
+        .collection("games")
+        .find({
+          _id: {
+            $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60 * 24)
+          }
+        })
+        .count()
+        .then(
+          count =>
+            `${counter} total <a href="/self-plays">self-play games</a> (${count} in past 24 hours, `
+        ),
       db
-      .collection("games")
-      .find({
-        _id: {
-          $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60)
-        }
-      })
-      .count()
-      .then(count => `${count} in past hour).<br/>`),
+        .collection("games")
+        .find({
+          _id: {
+            $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60)
+          }
+        })
+        .count()
+        .then(count => `${count} in past hour).<br/>`),
       db
-      .collection("match_games")
-      .find()
-      .count()
-      .then(count => `${count} total match games (`),
+        .collection("match_games")
+        .find()
+        .count()
+        .then(count => `${count} total match games (`),
       db
-      .collection("match_games")
-      .find({
-        _id: {
-          $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60 * 24)
-        }
-      })
-      .count()
-      .then(count => `${count} in past 24 hours, `),
+        .collection("match_games")
+        .find({
+          _id: {
+            $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60 * 24)
+          }
+        })
+        .count()
+        .then(count => `${count} in past 24 hours, `),
       db
-      .collection("match_games")
-      .find({
-        _id: {
-          $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60)
-        }
-      })
-      .count()
-      .then(count => `${count} in past hour).<br>`),
+        .collection("match_games")
+        .find({
+          _id: {
+            $gt: objectIdFromDate(Date.now() - 1000 * 60 * 60)
+          }
+        })
+        .count()
+        .then(count => `${count} in past hour).<br>`),
       db
-      .collection("networks")
-      .find({
-        enabled: 1
-      })
-      .sort({
-        elo: -1
-      })
-      //db.collection("networks").find({ game_count: { $gt: 0 } }, { _id: 1, hash: 1, game_count: 1, training_count: 1}).sort( { _id: -1 } ).limit(100)
-      .toArray()
-      .then(list => {
-        for (const item of list) {
-          const itemmoment = new moment(item._id.getTimestamp());
+        .collection("networks")
+        .find({
+          enabled: 1
+        })
+        .sort({
+          elo: -1
+        })
+        //db.collection("networks").find({ game_count: { $gt: 0 } }, { _id: 1, hash: 1, game_count: 1, training_count: 1}).sort( { _id: -1 } ).limit(100)
+        .toArray()
+        .then(list => {
+          for (const item of list) {
+            const itemmoment = new moment(item._id.getTimestamp());
 
-          totalgames.count -= item.game_count || 0;
+            totalgames.count -= item.game_count || 0;
 
-          network_table +=
-            "<tr><td>" +
-            itemmoment.utcOffset(8).format("YYYY-MM-DD HH:mm") +
-            '</td><td><a href="/networks/' +
-            item.hash +
-            '.gz">' +
-            item.hash.slice(0, 8) +
-            "</a></td><td>" +
-            (item.filters && item.blocks ?
-              `${item.blocks}x${item.filters}` :
-              "TBD") +
-            "</td><td>" +
-            item.elo.toFixed(3) +
-            "</td><td>" +
-            (item.last_count || 0) +
-            "</td><td>" +
-            (item.game_count || 0) +
-            "</td><td>" +
-            (item.training_count === 0 || item.training_count ?
-              item.training_count :
-              totalgames.count) +
-            "</td></tr>\n";
-        }
+            network_table +=
+              "<tr><td>" +
+              itemmoment.utcOffset(8).format("YYYY-MM-DD HH:mm") +
+              '</td><td><a href="/networks/' +
+              item.hash +
+              '.gz">' +
+              item.hash.slice(0, 8) +
+              "</a></td><td>" +
+              (item.filters && item.blocks
+                ? `${item.blocks}x${item.filters}`
+                : "TBD") +
+              "</td><td>" +
+              item.elo.toFixed(3) +
+              "</td><td>" +
+              (item.last_count || 0) +
+              "</td><td>" +
+              (item.game_count || 0) +
+              "</td><td>" +
+              (item.training_count === 0 || item.training_count
+                ? item.training_count
+                : totalgames.count) +
+              "</td></tr>\n";
+          }
 
-        network_table += "</table>\n";
-        return "";
-      }),
-      db
-      .collection("games")
-      .find({
-          ip: req.ip
-        },
-        selfplayProjection
-      )
-      .hint("ip_-1__id_-1")
-      .sort({
-        _id: -1
-      })
-      .limit(10)
-      .toArray()
-      .then(saveSelfplay("ip")),
-      db
-      .collection("match_games")
-      .find({
-        winnerhash: best_network_hash
-      }, {
-        _id: 0,
-        winnerhash: 1,
-        loserhash: 1,
-        sgfhash: 1
-      })
-      .sort({
-        _id: -1
-      })
-      .limit(1)
-      .toArray()
-      .then(game => {
-        if (game[0]) {
-          return (
-            "<br>" +
-            "View most recent match win by best network " +
-            game[0].winnerhash.slice(0, 8) +
-            " vs " +
-            game[0].loserhash.slice(0, 8) +
-            ": " +
-            '[<a href="/viewmatch/' +
-            game[0].sgfhash +
-            '?viewer=eidogo">EidoGo</a> / ' +
-            '<a href="/viewmatch/' +
-            game[0].sgfhash +
-            '?viewer=wgo">WGo</a>] ' +
-            "<br>"
-          );
-        } else {
+          network_table += "</table>\n";
           return "";
-        }
-      }),
+        }),
       db
-      .collection("games")
-      .find({}, selfplayProjection)
-      .sort({
-        _id: -1
-      })
-      .limit(10)
-      .toArray()
-      .then(saveSelfplay("all")),
+        .collection("games")
+        .find(
+          {
+            ip: req.ip
+          },
+          selfplayProjection
+        )
+        .hint("ip_-1__id_-1")
+        .sort({
+          _id: -1
+        })
+        .limit(10)
+        .toArray()
+        .then(saveSelfplay("ip")),
       db
-      .collection("networks")
-      .find({
-        enabled: 0
-      })
-      .sort({
-        exit_time: -1
-      })
-      .toArray()
-      .then(list => {
-        let match_table =
-          '<table class="matches-table" border=1><tr><th colspan=6>Lose Networks</th></tr>\n';
-        match_table +=
-          "<tr><th>Exit Date</th><th>Hash</th><th>Size</th><th>Elo</th><th>Games</th><th>Training #</th></tr>\n";
-
-        for (const item of list) {
-          const itemmoment = new moment(item.exit_time);
-
-          totalgames.count -= item.game_count || 0;
-
+        .collection("match_games")
+        .find(
+          {
+            winnerhash: best_network_hash
+          },
+          {
+            _id: 0,
+            winnerhash: 1,
+            loserhash: 1,
+            sgfhash: 1
+          }
+        )
+        .sort({
+          _id: -1
+        })
+        .limit(1)
+        .toArray()
+        .then(game => {
+          if (game[0]) {
+            return (
+              "<br>" +
+              "View most recent match win by best network " +
+              game[0].winnerhash.slice(0, 8) +
+              " vs " +
+              game[0].loserhash.slice(0, 8) +
+              ": " +
+              '[<a href="/viewmatch/' +
+              game[0].sgfhash +
+              '?viewer=eidogo">EidoGo</a> / ' +
+              '<a href="/viewmatch/' +
+              game[0].sgfhash +
+              '?viewer=wgo">WGo</a>] ' +
+              "<br>"
+            );
+          } else {
+            return "";
+          }
+        }),
+      db
+        .collection("games")
+        .find({}, selfplayProjection)
+        .sort({
+          _id: -1
+        })
+        .limit(10)
+        .toArray()
+        .then(saveSelfplay("all")),
+      db
+        .collection("networks")
+        .find({
+          enabled: 0
+        })
+        .sort({
+          exit_time: -1
+        })
+        .toArray()
+        .then(list => {
+          let match_table =
+            '<table class="matches-table" border=1><tr><th colspan=6>Lose Networks</th></tr>\n';
           match_table +=
-            "<tr><td>" +
-            itemmoment.utcOffset(8).format("YYYY-MM-DD HH:mm") +
-            '</td><td><a href="/networks/' +
-            item.hash +
-            '.gz">' +
-            item.hash.slice(0, 8) +
-            "</a></td><td>" +
-            (item.filters && item.blocks ?
-              `${item.blocks}x${item.filters}` :
-              "TBD") +
-            "</td><td>" +
-            item.elo.toFixed(3) +
-            "</td><td>" +
-            (item.game_count || 0) +
-            "</td><td>" +
-            (item.training_count === 0 || item.training_count ?
-              item.training_count :
-              totalgames.count) +
-            "</td></tr>\n";
-        }
-        match_table += "</table>\n";
-        return [styles, match_table];
-      })
+            "<tr><th>Exit Date</th><th>Hash</th><th>Size</th><th>Elo</th><th>Games</th><th>Training #</th></tr>\n";
+
+          for (const item of list) {
+            const itemmoment = new moment(item.exit_time);
+
+            totalgames.count -= item.game_count || 0;
+
+            match_table +=
+              "<tr><td>" +
+              itemmoment.utcOffset(8).format("YYYY-MM-DD HH:mm") +
+              '</td><td><a href="/networks/' +
+              item.hash +
+              '.gz">' +
+              item.hash.slice(0, 8) +
+              "</a></td><td>" +
+              (item.filters && item.blocks
+                ? `${item.blocks}x${item.filters}`
+                : "TBD") +
+              "</td><td>" +
+              item.elo.toFixed(3) +
+              "</td><td>" +
+              (item.game_count || 0) +
+              "</td><td>" +
+              (item.training_count === 0 || item.training_count
+                ? item.training_count
+                : totalgames.count) +
+              "</td></tr>\n";
+          }
+          match_table += "</table>\n";
+          return [styles, match_table];
+        })
     ]).then(responses => {
       const match_and_styles = responses.pop();
 
@@ -1866,11 +1900,8 @@ app.get(
           }most recent self-play games: `;
           page += games
             .map(
-              ({
-                sgfhash,
-                text
-              }) =>
-              `<a href="/view/${sgfhash}?viewer=wgo">${text}</a>`
+              ({ sgfhash, text }) =>
+                `<a href="/view/${sgfhash}?viewer=wgo">${text}</a>`
             )
             .join(", ");
           page += "<br>";
@@ -1919,9 +1950,9 @@ function shouldScheduleMatch(req, now) {
   const deleted = match.requests.filter(
     e => e.timestamp < now - MATCH_EXPIRE_TIME
   ).length;
-  const oldest = (match.requests.length > 0 ?
-    (now - match.requests[0].timestamp) / 1000 / 60 :
-    0
+  const oldest = (match.requests.length > 0
+    ? (now - match.requests[0].timestamp) / 1000 / 60
+    : 0
   ).toFixed(2);
   match.requests.splice(0, deleted);
   const requested = match.requests.length;
@@ -2112,15 +2143,16 @@ app.get(
 
 app.get("/view/:hash(\\w+).sgf", (req, res) => {
   db.collection("games")
-    .findOne({
-      sgfhash: req.params.hash
-    }, {
-      _id: 0,
-      sgf: 1
-    })
-    .then(({
-      sgf
-    }) => {
+    .findOne(
+      {
+        sgfhash: req.params.hash
+      },
+      {
+        _id: 0,
+        sgf: 1
+      }
+    )
+    .then(({ sgf }) => {
       sgf = sgf.replace(/(\n|\r)+/g, "");
 
       res.setHeader(
@@ -2137,15 +2169,16 @@ app.get("/view/:hash(\\w+).sgf", (req, res) => {
 
 app.get("/view/:hash(\\w+)", (req, res) => {
   db.collection("games")
-    .findOne({
-      sgfhash: req.params.hash
-    }, {
-      _id: 0,
-      sgf: 1
-    })
-    .then(({
-      sgf
-    }) => {
+    .findOne(
+      {
+        sgfhash: req.params.hash
+      },
+      {
+        _id: 0,
+        sgf: 1
+      }
+    )
+    .then(({ sgf }) => {
       sgf = sgf.replace(/(\n|\r)+/g, "");
 
       switch (req.query.viewer) {
@@ -2175,9 +2208,12 @@ app.get("/view/:hash(\\w+)", (req, res) => {
 
 app.get("/self-plays", (req, res) => {
   db.collection("games")
-    .find({}, {
-      data: 0
-    })
+    .find(
+      {},
+      {
+        data: 0
+      }
+    )
     .sort({
       _id: -1
     })
@@ -2207,9 +2243,11 @@ app.get("/match-games/:matchid(\\w+)", (req, res) => {
     })
     .then(match => {
       db.collection("match_games")
-        .aggregate([{
+        .aggregate([
+          {
             $match: {
-              $or: [{
+              $or: [
+                {
                   winnerhash: match.network1,
                   loserhash: match.network2,
                   options_hash: match.options_hash
@@ -2247,15 +2285,16 @@ app.get("/match-games/:matchid(\\w+)", (req, res) => {
 
 app.get("/viewmatch/:hash(\\w+).sgf", (req, res) => {
   db.collection("match_games")
-    .findOne({
-      sgfhash: req.params.hash
-    }, {
-      _id: 0,
-      sgf: 1
-    })
-    .then(({
-      sgf
-    }) => {
+    .findOne(
+      {
+        sgfhash: req.params.hash
+      },
+      {
+        _id: 0,
+        sgf: 1
+      }
+    )
+    .then(({ sgf }) => {
       sgf = sgf.replace(/(\n|\r)+/g, "");
 
       res.setHeader(
@@ -2272,15 +2311,16 @@ app.get("/viewmatch/:hash(\\w+).sgf", (req, res) => {
 
 app.get("/viewmatch/:hash(\\w+)", (req, res) => {
   db.collection("match_games")
-    .findOne({
-      sgfhash: req.params.hash
-    }, {
-      _id: 0,
-      sgf: 1
-    })
-    .then(({
-      sgf
-    }) => {
+    .findOne(
+      {
+        sgfhash: req.params.hash
+      },
+      {
+        _id: 0,
+        sgf: 1
+      }
+    )
+    .then(({ sgf }) => {
       sgf = sgf.replace(/(\n|\r)+/g, "");
 
       switch (req.query.viewer) {
@@ -2317,27 +2357,30 @@ app.get(
         "fetching data for elograph.json, should be called once per day or when `cachematches` is cleared"
       );
 
-      const cursor = db.collection("networks").aggregate([{
-        $group: {
-          _id: 1,
-          count: {
-            $sum: "$game_count"
+      const cursor = db.collection("networks").aggregate([
+        {
+          $group: {
+            _id: 1,
+            count: {
+              $sum: "$game_count"
+            }
           }
         }
-      }]);
+      ]);
       const totalgames = await cursor.next();
 
       return Promise.all([
-          db
+        db
           .collection("networks")
           .find()
           .sort({
             _id: -1
           })
           .toArray(),
-          db
+        db
           .collection("matches")
-          .aggregate([{
+          .aggregate([
+            {
               $lookup: {
                 localField: "network2",
                 from: "networks",
@@ -2355,7 +2398,7 @@ app.get(
             }
           ])
           .toArray()
-        ])
+      ])
         .then(dataArray => {
           // initialize mapping of best networks to Elo rating cached globally
           bestRatings = new Map();
@@ -2373,8 +2416,10 @@ app.get(
             return {
               hash: item.hash,
               game_count: item.game_count,
-              net: item.training_count === 0 || item.training_count ?
-                item.training_count : totalgames.count, // mycount
+              net:
+                item.training_count === 0 || item.training_count
+                  ? item.training_count
+                  : totalgames.count, // mycount
               best
             };
           });
@@ -2382,9 +2427,9 @@ app.get(
           // prepare ratingsMap
           const ratingsMap = new Map();
           dataArray[1].forEach(match => {
-            const network2_rating = ratingsMap.get(match.network2) ?
-              ratingsMap.get(match.network2).rating :
-              0;
+            const network2_rating = ratingsMap.get(match.network2)
+              ? ratingsMap.get(match.network2).rating
+              : 0;
             let sprt;
             let elo;
 
